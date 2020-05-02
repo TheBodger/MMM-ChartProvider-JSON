@@ -1,0 +1,31 @@
+{
+  "name": "MMM-ChartProvider-JSON",
+  "version": "1.0.0",
+  "description": "Magic Mirror Module for pulling JSON feeds, converting to NDTF format and passing to a main module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TheBodger/MMM-ChartProvider-JSON"
+  },
+  "author": {
+    "name": "N Scott"
+  },
+  "keywords": [
+    "magic mirror",
+    "smart mirror",
+    "JSON Feeds",
+    "module",
+    "provider"
+  ],
+  "dependencies": {
+    "axios": "latest",
+    "winston": "latest",
+    "moment": "latest",
+    "request": "latest",
+    "fs": "latest"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/TheBodger/MMM-ChartProvider-JSON/issues"
+  },
+  "homepage": "https://github.com/TheBodger/MMM-ChartProvider-JSON#readme"
+}
