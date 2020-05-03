@@ -28,6 +28,7 @@ var moment = require("moment");
 
 var LOG = require('../MMM-FeedUtilities/LOG');
 var QUEUE = require('../MMM-FeedUtilities/queueidea');
+var RSS = require('../MMM-FeedUtilities/RSS');
 
 // get required structures and utilities
 
@@ -89,11 +90,11 @@ module.exports = NodeHelper.create({
 
 		providerstorage[moduleinstance].config.jsonfeeds.forEach(function (configfeed) {
 
-			var feed = { sourcetitle: '', lastFeedDate: '', feedURL: '', latestfeedpublisheddate: new Date(0) };
+			var feed = { sourcetitle: '', lastFeedDate: '', latestfeedpublisheddate: new Date(0), feedconfig: configfeed };
 
 			//we add some additional config information for usage in processing the data
 
-			var param = Object.assign({}, paramdefaults, config.params[idx]);
+			//var jsonfeed = Object.assign({}, paramdefaults, config.params[idx]);
 
 			configfeed["useruntime"] = false;
 			configfeed["usenumericoutput"] = false;
@@ -103,7 +104,7 @@ module.exports = NodeHelper.create({
 			if (typeof configfeed.timestamp == "number") { //wants an offset of the runtime, provided in seconds, or it was blank
 
 				configfeed["useruntime"] = true;
-				configfeed["runtime"] = new Date(moduleruntime.getTime() + (param.timestamp * 1000));
+				configfeed["runtime"] = new Date(moduleruntime.getTime() + (configfeed.timestamp * 1000));
 
 			}
 
@@ -111,8 +112,8 @@ module.exports = NodeHelper.create({
 			//if no date is available on a feed, then the current latest date of a feed published is allocated to it
 
 			feed.lastFeedDate = self.calcTimestamp(configfeed.oldestage);
-			feed.input = configfeed.input;
 			feed.sourcetitle = configfeed.feedtitle;
+			feed.feedconfig = configfeed;
 
 			providerstorage[moduleinstance].trackingfeeddates.push(feed);
 
@@ -191,13 +192,67 @@ module.exports = NodeHelper.create({
 				//local storage before accepting the request
 
 				if (providerstorage[payload.moduleinstance] == null) { break; } //need to sort this out later !!
-				self.processfeeds(payload.moduleinstance, payload.providerid)
+				this.processfeeds(payload.moduleinstance, payload.providerid);
 				break;
 			case "STATUS":
 				this.showstatus(payload.moduleinstance);
 				break;
 		}
 
+	},
+
+	processfeeds: function (moduleinstance, providerid) {
+
+		var self = this;
+		var feedidx = -1;
+
+		if (this.debug) { this.logger[moduleinstance].info("In processfeeds: " + moduleinstance + " " + providerid); }
+
+		//because we only get one data feed in the chart providers, then we preload the data before letting the jsonfeed actually process it
+
+		//we need to initialise the storage area within the providerstorage.
+
+		this.outputarray = new Array(providerstorage[moduleinstance].config.jsonfeeds.length)// feeds and then items
+
+		for (var cidx = 0; cidx < providerstorage[moduleinstance].config.jsonfeeds.length; cidx++) {
+
+			this.outputarray[cidx] = [];
+		}
+
+		//attempt to pull anything back that is valid in terms of a fs ot HTTP recognised locator
+
+		console.error(`Current directory: ${process.cwd()}`);
+
+		var inputjson = JSONutils.getJSON(providerstorage[moduleinstance].config);
+
+		providerstorage[moduleinstance].trackingfeeddates.forEach(function (feed) {
+
+				var jsonarray = inputjson[feed.feedconfig.rootkey];
+
+			//this should now be an array that we can process in the simplest case
+
+			//check it actually contains something, assuming if empty it is in error
+
+			if (jsonarray.length == 0) {
+				console.error("json array is empty");
+				return;
+			}
+
+			if (self.debug) {
+				self.logger[moduleinstance].info("In process feed: " + JSON.stringify(feed));
+				self.logger[moduleinstance].info("In process feed: " + moduleinstance);
+				self.logger[moduleinstance].info("In process feed: " + providerid);
+				self.logger[moduleinstance].info("In process feed: " + feedidx);
+				self.logger[moduleinstance].info("building queue " + self.queue.queue.length);
+			}
+
+			self.queue.addtoqueue(function () { self.processfeed(feed, moduleinstance, providerid, ++feedidx, jsonarray); });
+
+		});
+		//even though this is no longer asynchronous we keep the queue just for ease of development
+
+		this.queue.startqueue(providerstorage[moduleinstance].config.waitforqueuetime);
+		
 	},
 
 	showstatus: function (moduleinstance) {
@@ -216,56 +271,6 @@ module.exports = NodeHelper.create({
 
 	},
 
-	processfeeds: function (moduleinstance,providerid) {
-
-		var self = this;
-		var feedidx = -1;
-
-		if (this.debug) { this.logger[moduleinstance].info("In processfeeds: " + moduleinstance + " " + providerid); }
-
-		//because we only get one data feed in the chart providers, then we preload the data before letting the jsonfeed actually process it
-
-		//we need to initialise the storage area within the providerstorage.
-
-		var outputarray = new Array(config.params.length)// param and then items
-
-		for (cidx = 0; cidx < config.params.length; cidx++) { outputarray[cidx] = []; }
-
-		//attempt to pull anything back that is valid in terms of a fs ot HTTP recognised locator
-
-		var inputjson = JSONutils.getJSON(providerstorage[moduleinstance].config);
-
-		var jsonarray = inputjson[providerstorage[moduleinstance].config.jsonfeeds[0].rootkey];
-
-		//this should now be an array that we can process in the simplest case
-
-		//check it actually contains something, assuming if empty it is in error
-
-		if (jsonarray.length == 0) {
-			console.error("json array is empty");
-			break;
-		}
-
-		providerstorage[moduleinstance].trackingfeeddates.forEach(function (feed) {
-
-			if (self.debug) {
-				self.logger[moduleinstance].info("In process feed: " + JSON.stringify(feed));
-				self.logger[moduleinstance].info("In process feed: " + moduleinstance);
-				self.logger[moduleinstance].info("In process feed: " + providerid);
-				self.logger[moduleinstance].info("In process feed: " + feedidx);
-				self.logger[moduleinstance].info("building queue " + self.queue.queue.length);
-			}
-
-			self.queue.addtoqueue(function () {self.fetchfeed(feed, moduleinstance, providerid, ++feedidx); });
-
-		});
-		//even though this is no longer asynchronous we keep the queue just for ease of development
-
-
-		this.queue.startqueue(providerstorage[moduleinstance].config.waitforqueuetime);
-
-	},
-
 	sendNotificationToMasterModule: function (stuff, stuff2) {
 		this.sendSocketNotification(stuff, stuff2);
 	},
@@ -280,21 +285,29 @@ module.exports = NodeHelper.create({
 
 	},
 
-	send: function (moduleinstance, providerid, source, feeds) {
+	send: function (moduleinstance, providerid, source, feedidx) {
 
-		var payloadforprovider = { providerid: providerid, source: source, payloadformodule: feeds.items }
+		//wrap the output array in an object so the main module handles it in the same way as if it was a collection of feeds
+		//and add an id for tracking purposes and wrap that in an array
+
+		var payloadforprovider = {
+			providerid: providerid, source: source, payloadformodule: [{ setid: providerstorage[moduleinstance].trackingfeeddates[feedidx].feedconfig.setid, itemarray: this.outputarray[feedidx] }]
+		};
 
 		if (this.debug) {
-			this.logger[moduleinstance].info("In send, source, feeds // sending items this time: " + (feeds.items.length > 0));
+			this.logger[moduleinstance].info("In send, source, feeds // sending items this time: " + (this.outputarray[feedidx].length > 0));
 			this.logger[moduleinstance].info(JSON.stringify(source));
-			this.logger[moduleinstance].info(JSON.stringify(feeds));
 		}
 
-		if (feeds.items.length > 0) {
+		if (this.outputarray[feedidx].length > 0) {
 
 			this.sendNotificationToMasterModule("UPDATED_STUFF_" + moduleinstance, payloadforprovider);
 
 		}
+
+		// as we have sent it and the important date is stored we can clear the outputarray
+
+		this.outputarray[feedidx] = [];
 
 		this.queue.processended();
 
@@ -303,7 +316,9 @@ module.exports = NodeHelper.create({
 	//now to the core of the system, where there are most different to the feedprovider modules
 	//we enter this for wach of the jsonfeeds we want to create to send back for later processing
 
-	fetchfeed: function (feed, moduleinstance, providerid, feedidx) {
+	processfeed: function (feed, moduleinstance, providerid, feedidx, jsonarray) {
+
+		//we process a feed at a time here
 
 		if (this.debug) {
 			this.logger[moduleinstance].info("In fetch feed: " + JSON.stringify(feed));
@@ -317,123 +332,137 @@ module.exports = NodeHelper.create({
 
 		var self = this;
 
-		//var maxfeeddate = new Date(0);
+		var maxfeeddate = new Date(0);
 			
-		//	if (self.debug) { self.logger[moduleinstance].info("feedparser end: " + feedparser.title); }
+		if (new Date(0) < maxfeeddate) {
+			providerstorage[moduleinstance].trackingfeeddates[feedidx]['latestfeedpublisheddate'] = maxfeeddate;
+		}
 
-		//	if (new Date(0) < maxfeeddate) {
-		//		providerstorage[moduleinstance].trackingfeeddates[feedidx]['latestfeedpublisheddate'] = maxfeeddate;
-		//	}
+		for (var idx = 0; idx < jsonarray.length; idx++) {
 
-		//	self.send(moduleinstance, providerid, rsssource, rssitems);
-		//	self.done();
+			//look for any key value pairs required and create an item
+			//ignore any items that are older than the max feed date
 
-		//for (var idx = 0; idx < jsonarray.length; idx++) {
+				var processthisitem = false;
 
-		//	//look for any key value pairs required and create an item
+				var tempitem = new structures.NDTFItem()
 
-		//	for (var cidx = 0; cidx < config.params.length; cidx++) {
+				tempitem.object = feed.feedconfig.object;
 
-		//		var processthisitem = false;
+				//do we have a subject
 
-		//		var tempitem = new structures.NDTFItem()
+			if (jsonarray[idx][feed.feedconfig.subject] != null) {
 
-		//		tempitem.object = config.params[cidx].object;
+				tempitem.subject = jsonarray[idx][feed.feedconfig.subject];
 
-		//		//do we have a subject
+					//do we have a value
 
-		//		if (jsonarray[idx][config.params[cidx].subject] != null) {
+				if (jsonarray[idx][feed.feedconfig.value] != null) {
 
-		//			tempitem.subject = jsonarray[idx][config.params[cidx].subject];
+						//check if numeric 
 
-		//			//do we have a value
+					if (feed.feedconfig.usenumericoutput) {
+						if (isNaN(parseFloat(jsonarray[idx][feed.feedconfig.value]))) {
+							console.error("Invalid numeric value: " + jsonarray[idx][feed.feedconfig.value]);
+							}
+							else {
+							tempitem.value = parseFloat(jsonarray[idx][feed.feedconfig.value]);
+							}
+						}
+						else {
+						tempitem.value = jsonarray[idx][feed.feedconfig.value];
+						}
 
-		//			if (jsonarray[idx][config.params[cidx].value] != null) {
+						//if the timestamp is requested do we have one of those as well
 
-		//				//check if numeric 
+					if (!feed.feedconfig.useruntime) {
 
-		//				if (config.params[cidx].usenumericoutput) {
-		//					if (isNaN(parseFloat(jsonarray[idx][config.params[cidx].value]))) {
-		//						console.error("Invalid numeric value: " + jsonarray[idx][config.params[cidx].value]);
-		//					}
-		//					else {
-		//						tempitem.value = parseFloat(jsonarray[idx][config.params[cidx].value]);
-		//					}
-		//				}
-		//				else {
-		//					tempitem.value = jsonarray[idx][config.params[cidx].value];
-		//				}
+							//got a timestamp key, now validate it
 
-		//				//if the timestamp is requested do we have one of those as well
+						var temptimestamp = jsonarray[idx][feed.feedconfig.timestamp];
 
-		//				if (!config.params[cidx].useruntime) {
+							if (temptimestamp != null) {
 
-		//					//got a timestamp key, now validate it
+								if (feed.feedconfig.timestampformat != null) {
 
-		//					var temptimestamp = jsonarray[idx][config.params[cidx].timestamp];
+									if (moment(temptimestamp, feed.feedconfig.timestampformat).isValid()) {
 
-		//					if (temptimestamp != null) {
+										//got a good date
 
-		//						if (config.params[cidx].timestampformat != null) {
+										tempitem.timestamp = moment(temptimestamp, feed.feedconfig.timestampformat).toDate();
 
-		//							if (moment(temptimestamp, config.params[cidx].timestampformat).isValid()) {
+										processthisitem = true;
 
-		//								//got a good date
+									}
+									else { console.error("Invalid date"); }
 
-		//								tempitem.timestamp = moment(temptimestamp, config.params[cidx].timestampformat).toDate();
+								}
 
-		//								processthisitem = true;
+								else {
 
-		//							}
-		//							else { console.error("Invalid date"); }
+									if (moment(temptimestamp).isValid()) {
 
-		//						}
+										//got a good date
 
-		//						else {
+										tempitem.timestamp = moment(temptimestamp).toDate();
 
-		//							if (moment(temptimestamp).isValid()) {
+										processthisitem = true;
 
-		//								//got a good date
+									}
+									else { console.error("Invalid date"); }
 
-		//								tempitem.timestamp = moment(temptimestamp).toDate();
+								}
 
-		//								processthisitem = true;
+							}
+						}
+						else { // use an offset timestamp
 
-		//							}
-		//							else { console.error("Invalid date"); }
+						tempitem.timestamp = feed.feedconfig.adjustedruntime;
 
-		//						}
+							processthisitem = true;
 
-		//					}
-		//				}
-		//				else { // use an offset timestamp
+						}
 
-		//					tempitem.timestamp = config.params[cidx].adjustedruntime;
+					}
 
-		//					processthisitem = true;
+				}
 
-		//				}
+				if (maxfeeddate > tempitem.timestamp) { processthisitem = false };
 
-		//			}
-
-		//		}
-
-		//		if (processthisitem) {
-
-		//			outputarray[cidx].push(tempitem);
-
-		//		}
-
-		//		delete tempitem;
-
-		//	}  //end of process loop - params
+				if (processthisitem) {
 
 
-		//}  //end of process loop - input array
+					this.outputarray[feedidx].push(tempitem);
+
+				}
+
+				delete tempitem;
 
 
 
-		
+
+		}  //end of process loop - input array
+
+		if (feed.feedconfig.filename == null) {
+			console.info(this.outputarray[feedidx].length);
+		}
+		else {
+
+			// write out to a file
+
+			JSONutils.putJSON("./" + feed.feedconfig.filename, this.outputarray[feedidx]);
+
+			console.info(this.outputarray[feedidx].length);
+
+		}
+
+		var rsssource = new RSS.RSSsource();
+		rsssource.sourceiconclass = '';
+		rsssource.sourcetitle = feed.sourcetitle;
+		rsssource.title = feed.sourcetitle;
+
+		self.send(moduleinstance, providerid, rsssource, feedidx);
+		self.done();
 
 	},
 

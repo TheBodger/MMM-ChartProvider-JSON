@@ -47,7 +47,7 @@ Module.register("MMM-ChartProvider-JSON", {
 		jsonfeeds: [
 			{
 				feedname: null,
-				feedtitle: null,
+				setid: null,			// | Yes | the setif of this particular data, used to identify the data when revived in display module
 				rootkey: '',            // | No | the key value to determine at what level to extract data | a valid string | the first level
 				subject: null,          // | Yes | the KEY name to use as a subject for an item | any valid string | none
 				object: null,           // | Yes | the object to insert into the item | any valid string | none
@@ -76,6 +76,14 @@ Module.register("MMM-ChartProvider-JSON", {
 
 		this.sendNotificationToNodeHelper("CONFIG", { moduleinstance: this.identifier, config: this.config });
 		this.sendNotificationToNodeHelper("STATUS", { moduleinstance: this.identifier });
+
+	},
+
+	setConfig: function (config) {  //replace the standard to ensure feeds defaults are correctly set
+		this.config = Object.assign({}, this.defaults, config);
+		for (var jidx = 0; jidx < config.jsonfeeds.length; jidx++) {
+			this.config.jsonfeeds[jidx] = Object.assign({}, this.defaults.jsonfeeds[0], config.jsonfeeds[jidx]);
+        }
 
 	},
 
