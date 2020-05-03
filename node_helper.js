@@ -80,6 +80,16 @@ module.exports = NodeHelper.create({
 
 		if (this.debug) { this.logger[moduleinstance].info("In setconfig: " + moduleinstance + " " + config); }
 
+
+		if (config.input != null) {
+
+			config['useHTTP'] = false;
+
+			// work out if we need to use a HTTP processor
+
+			if (config.input.substring(0, 4).toLowerCase() == "http") { config.useHTTP = true; }
+		}
+
 		//store a local copy so we dont have keep moving it about
 
 		providerstorage[moduleinstance] = { config: config, trackingfeeddates: [] };

@@ -83,7 +83,9 @@ Module.register("MMM-ChartProvider-JSON", {
 		this.config = Object.assign({}, this.defaults, config);
 		for (var jidx = 0; jidx < config.jsonfeeds.length; jidx++) {
 			this.config.jsonfeeds[jidx] = Object.assign({}, this.defaults.jsonfeeds[0], config.jsonfeeds[jidx]);
-        }
+		}
+
+
 
 	},
 
