@@ -29,6 +29,7 @@ var moment = require("moment");
 var LOG = require('../MMM-FeedUtilities/LOG');
 var QUEUE = require('../MMM-FeedUtilities/queueidea');
 var RSS = require('../MMM-FeedUtilities/RSS');
+var commonutils = require('../MMM-FeedUtilities/utilities');
 
 // get required structures and utilities
 
@@ -121,49 +122,13 @@ module.exports = NodeHelper.create({
 			//store the actual timestamp to start filtering, this will change as new feeds are pulled to the latest date of those feeds
 			//if no date is available on a feed, then the current latest date of a feed published is allocated to it
 
-			feed.lastFeedDate = self.calcTimestamp(configfeed.oldestage);
+			feed.lastFeedDate = commonutils.calcTimestamp(configfeed.oldestage);
 			feed.sourcetitle = configfeed.feedtitle;
 			feed.feedconfig = configfeed;
 
 			providerstorage[moduleinstance].trackingfeeddates.push(feed);
 
 		});
-
-	},
-
-	calcTimestamp: function (age) {
-
-		//calculate the actual timestamp to use for filtering feeds, 
-		//options are timestamp format, today for midnight + 0.0001 seconds today, or age in minutes
-		//determine the format of the data in age
-
-		var filterDate = new Date();
-
-		if (typeof (age) == 'number') {
-
-			filterDate = new Date(filterDate.getTime() - (age * 60 * 1000));
-
-		}
-		else { //age is hopefully a string ha ha
-
-			if (age.toLowerCase() == 'today') {
-				filterDate = new Date(filterDate.getFullYear(), filterDate.getMonth(), filterDate.getDate(), 0, 0, 0, 0)
-			}
-
-			else { //we assume the user entered a correct date - we can try some basic validation
-
-				if (moment(age, "YYYY-MM-DD HH:mm:ss", true).isValid()) {
-					filterDate = new Date(age);
-				}
-				else {
-
-					console.log(this.name + " Invalid date provided for filter age of feeds:" + age.toString());
-				}
-
-			}
-		}
-
-		return filterDate;
 
 	},
 
@@ -231,13 +196,11 @@ module.exports = NodeHelper.create({
 
 		//attempt to pull anything back that is valid in terms of a fs ot HTTP recognised locator
 
-		console.error(`Current directory: ${process.cwd()}`);
-
 		var inputjson = JSONutils.getJSON(providerstorage[moduleinstance].config);
 
 		providerstorage[moduleinstance].trackingfeeddates.forEach(function (feed) {
 
-				var jsonarray = inputjson[feed.feedconfig.rootkey];
+			var jsonarray = utilities.getkeyedJSON(inputjson, feed.feedconfig.rootkey);
 
 			//this should now be an array that we can process in the simplest case
 
