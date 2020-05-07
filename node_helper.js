@@ -165,7 +165,6 @@ module.exports = NodeHelper.create({
 			case "UPDATE":
 				//because we can get some of these in a browser refresh scenario, we check for the
 				//local storage before accepting the request
-
 				if (providerstorage[payload.moduleinstance] == null) { break; } //need to sort this out later !!
 				this.processfeeds(payload.moduleinstance, payload.providerid);
 				break;
@@ -339,22 +338,26 @@ module.exports = NodeHelper.create({
 							console.error("Invalid numeric value: " + jsonarray[idx][feed.feedconfig.value]);
 							}
 							else {
-							tempitem.value = parseFloat(jsonarray[idx][feed.feedconfig.value]);
+								tempitem.value = parseFloat(jsonarray[idx][feed.feedconfig.value]);
 							}
 						}
 						else {
-						tempitem.value = jsonarray[idx][feed.feedconfig.value];
+							tempitem.value = jsonarray[idx][feed.feedconfig.value];
 						}
 
 						//if the timestamp is requested do we have one of those as well
 
 					if (!feed.feedconfig.useruntime) {
 
-							//got a timestamp key, now validate it
+						//got a timestamp key, now validate it
 
 						var temptimestamp = jsonarray[idx][feed.feedconfig.timestamp];
 
-							if (temptimestamp != null) {
+						if (temptimestamp != null) {
+
+							self.maxfeeddate = new Date(Math.max(self.maxfeeddate, new Date(temptimestamp)));
+
+							if (new Date(temptimestamp) > feed.latestfeedpublisheddate) {
 
 								if (feed.feedconfig.timestampformat != null) {
 
@@ -385,12 +388,12 @@ module.exports = NodeHelper.create({
 									else { console.error("Invalid date"); }
 
 								}
-
+							}
 							}
 						}
 						else { // use an offset timestamp
 
-						tempitem.timestamp = feed.feedconfig.adjustedruntime;
+							tempitem.timestamp = feed.feedconfig.adjustedruntime;
 
 							processthisitem = true;
 
@@ -400,8 +403,6 @@ module.exports = NodeHelper.create({
 
 				}
 
-				if (maxfeeddate > tempitem.timestamp) { processthisitem = false };
-
 				if (processthisitem) {
 
 
@@ -410,9 +411,6 @@ module.exports = NodeHelper.create({
 				}
 
 				delete tempitem;
-
-
-
 
 		}  //end of process loop - input array
 
@@ -433,6 +431,10 @@ module.exports = NodeHelper.create({
 		rsssource.sourceiconclass = '';
 		rsssource.sourcetitle = feed.sourcetitle;
 		rsssource.title = feed.sourcetitle;
+
+		if (new Date(0) < self.maxfeeddate) {
+			providerstorage[moduleinstance].trackingfeeddates[feedidx]['latestfeedpublisheddate'] = self.maxfeeddate;
+		}
 
 		self.send(moduleinstance, providerid, rsssource, feedidx);
 		self.done();
