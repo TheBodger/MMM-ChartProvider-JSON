@@ -4,7 +4,7 @@ This magic mirror module is a MMM-ChartProvider module that is part of the MMM-C
 
 For an overview of these modules see the README.md in https://github.com/TheBodger/MMM-ChartDisplay.
 
-the -JSON module read any JSON formatted data, from a URL or local text file and format it into one of more NDFT standard feeds to one or more MMM-ChartDisplay consumers.
+the -JSON module reads JSON formatted data, from a URL or local text file and formats it into one of more NDTF standard feeds to one or more MMM-ChartDisplay consumers.
 
 ### Example
 ![Example of MMM-ChartProvider-JSON output being displayed](images/screenshot.png?raw=true "Example screenshot")
@@ -26,7 +26,7 @@ To install the module, use your terminal to:
 
 ## Using the module
 
-### MagicMirror² Configuration
+### MagicMirrorÂ² Configuration
 
 To use this module, add the following minimum configuration block to the modules array in the `config/config.js` file:
 ```js
