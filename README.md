@@ -17,12 +17,6 @@ Before installing this module;
 		use https://github.com/TheBodger/MMM-ChartUtilities to setup the MMM-Chart... dependencies and  install all modules.
 		use https://github.com/TheBodger/MMM-FeedUtilities to setup the MMM-Feed... dependencies and  install all modules.
 
-Install from the /Magicmirror folder
-
-```
-npm install moment
-```
-
 ## Installation
 To install the module, use your terminal to:
 1. Navigate to your MagicMirror's modules folder. If you are using the default installation directory, use the command:<br />`cd ~/MagicMirror/modules`
@@ -35,17 +29,19 @@ To install the module, use your terminal to:
 To use this module, add the following minimum configuration block to the modules array in the `config/config.js` file:
 ```js
 {
-  "input": "JSON filename or URL",
-  "params": [
+  consumerids:['consumerid of MMM-ChartDisplay],
+  id:'unique id of this module instance',
+  input: "file name or URL of JSON feed",
+  jsonfeeds: [
     {
-      "subject": "the name of the key in the input JSON that will provide the value for the NDTF subject",
-      "object": "the value for the NDTF object, this is not extracted from the input JSON feed",
-      "value": "the name of the key in the input JSON that will provide the value for the NDTF value",
- 
-    }
+      setid: "unique setid of this data set",
+      subject: "key name in the input to be used as the subject value",
+      object: "string denoting the object(ive) of this data set",
+      value: "key name in the input to be used as the actual value",  
+    },
+    
   ]
 }
-
 ```
 
 ### Configuration Options
