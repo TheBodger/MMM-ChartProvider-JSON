@@ -315,37 +315,33 @@ module.exports = NodeHelper.create({
 			//look for any key value pairs required and create an item
 			//ignore any items that are older than the max feed date
 
-				var processthisitem = false;
+			var processthisitem = false;
 
-				var tempitem = new structures.NDTFItem()
+			var tempitem = new structures.NDTFItem()
 
-				tempitem.object = feed.feedconfig.object;
-
-				//do we have a subject
+			tempitem.object = feed.feedconfig.object;
 
 			if (jsonarray[idx][feed.feedconfig.subject] != null) {
 
 				tempitem.subject = jsonarray[idx][feed.feedconfig.subject];
 
-					//do we have a value
-
 				if (jsonarray[idx][feed.feedconfig.value] != null) {
 
-						//check if numeric 
+					//check if numeric 
 
 					if (feed.feedconfig.usenumericoutput) {
 						if (isNaN(parseFloat(jsonarray[idx][feed.feedconfig.value]))) {
 							console.error("Invalid numeric value: " + jsonarray[idx][feed.feedconfig.value]);
-							}
-							else {
-								tempitem.value = parseFloat(jsonarray[idx][feed.feedconfig.value]);
-							}
 						}
 						else {
-							tempitem.value = jsonarray[idx][feed.feedconfig.value];
+							tempitem.value = parseFloat(jsonarray[idx][feed.feedconfig.value]);
 						}
+					}
+					else {
+						tempitem.value = jsonarray[idx][feed.feedconfig.value];
+					}
 
-						//if the timestamp is requested do we have one of those as well
+					//if the timestamp is requested do we have one of those as well
 
 					if (!feed.feedconfig.useruntime) {
 
@@ -355,62 +351,53 @@ module.exports = NodeHelper.create({
 
 						if (temptimestamp != null) {
 
-							self.maxfeeddate = new Date(Math.max(self.maxfeeddate, new Date(temptimestamp)));
+							//need to try and convert it to a valid date before doing anything else
 
-							if (new Date(temptimestamp) > feed.latestfeedpublisheddate) {
-
-								if (feed.feedconfig.timestampformat != null) {
-
-									if (moment(temptimestamp, feed.feedconfig.timestampformat).isValid()) {
-
-										//got a good date
-
-										tempitem.timestamp = moment(temptimestamp, feed.feedconfig.timestampformat).toDate();
-
-										processthisitem = true;
-
-									}
-									else { console.error("Invalid date"); }
-
+							if (feed.feedconfig.timestampformat != null) {
+								if (moment(temptimestamp, feed.feedconfig.timestampformat).isValid()) {
+									tempitem.timestamp = moment(temptimestamp, feed.feedconfig.timestampformat).toDate();
+									processthisitem = true;
 								}
-
 								else {
-
-									if (moment(temptimestamp).isValid()) {
-
-										//got a good date
-
-										tempitem.timestamp = moment(temptimestamp).toDate();
-
-										processthisitem = true;
-
-									}
-									else { console.error("Invalid date"); }
-
+									console.error("Invalid date");
 								}
 							}
+							else {
+								if (moment(temptimestamp).isValid()) {
+									tempitem.timestamp = moment(temptimestamp).toDate();
+									processthisitem = true;
+								}
+								else {
+									console.error("Invalid date");
+								}
 							}
 						}
 						else { // use an offset timestamp
 
 							tempitem.timestamp = feed.feedconfig.adjustedruntime;
-
 							processthisitem = true;
+						}
 
+						self.maxfeeddate = new Date(Math.max(self.maxfeeddate, tempitem.timestamp));
+
+						if (tempitem.timestamp <= feed.latestfeedpublisheddate) {
+							processthisitem = false;
+							Console.info("Item too old")
 						}
 
 					}
 
 				}
+			}
 
-				if (processthisitem) {
+			if (processthisitem) {
+				this.outputarray[feedidx].push(tempitem);
+			}
+			else {
+				console.info("Ignoring: ", JSON.stringify(tempitem), JSON.stringify(jsonarray[idx]));
+			}
 
-
-					this.outputarray[feedidx].push(tempitem);
-
-				}
-
-				delete tempitem;
+			delete tempitem;
 
 		}  //end of process loop - input array
 
