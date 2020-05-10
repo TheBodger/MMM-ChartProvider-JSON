@@ -11,12 +11,16 @@ the -JSON module reads JSON formatted data, from a URL or local text file and fo
 
 ### Dependencies
 
+This module requires both MMM-FeedUtilities and MMM-ChartUtilies to be installed.
+
 Before installing this module;
 		use https://github.com/TheBodger/MMM-ChartUtilities to setup the MMM-Chart... dependencies and  install all modules.
 		use https://github.com/TheBodger/MMM-FeedUtilities to setup the MMM-Feed... dependencies and  install all modules.
 
+Install from the /Magicmirror folder
+
 ```
-moment
+npm install moment
 ```
 
 ## Installation
