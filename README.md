@@ -35,7 +35,7 @@ To use this module, add the following minimum configuration block to the modules
   "params": [
     {
       "subject": "the name of the key in the input JSON that will provide the value for the NDTF subject",
-      "object": "the name of the key in the input JSON that will provide the value for the NDTF object",
+      "object": "the value for the NDTF object, this is not colelcted from the input JSON feed",
       "value": "the name of the key in the input JSON that will provide the value for the NDTF value",
  
     }
