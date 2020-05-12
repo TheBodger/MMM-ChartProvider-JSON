@@ -192,38 +192,47 @@ module.exports = NodeHelper.create({
 			this.outputarray[cidx] = [];
 		}
 
-		//attempt to pull anything back that is valid in terms of a fs ot HTTP recognised locator
+		//using version 2.0 of the utils that use callbacks for all cases to process the data captured
 
-		var inputjson = JSONutils.getJSON(providerstorage[moduleinstance].config);
+		var options = {};
 
-		providerstorage[moduleinstance].trackingfeeddates.forEach(function (feed) {
+		if (providerstorage[moduleinstance].config.useHTTP) {
+			var options = new URL(providerstorage[moduleinstance].config.input);
+		}
 
-			var jsonarray = utilities.getkeyedJSON(inputjson, feed.feedconfig.rootkey);
+		var JSONconfig = {
+			options: options,
+			config: providerstorage[moduleinstance].config,
+			feed: {},
+			moduleinstance: moduleinstance,
+			providerid: providerid,
+			feedidx: feedidx,
+		};
 
-			//this should now be an array that we can process in the simplest case
+		JSONconfig['callback'] = function (JSONconfig, inputjson) {
 
-			//check it actually contains something, assuming if empty it is in error
+			providerstorage[JSONconfig.moduleinstance].trackingfeeddates.forEach(function (feed) {
 
-			if (jsonarray.length == 0) {
-				console.error("json array is empty");
-				return;
-			}
+				var jsonarray = utilities.getkeyedJSON(inputjson, feed.feedconfig.rootkey);
 
-			if (self.debug) {
-				self.logger[moduleinstance].info("In process feed: " + JSON.stringify(feed));
-				self.logger[moduleinstance].info("In process feed: " + moduleinstance);
-				self.logger[moduleinstance].info("In process feed: " + providerid);
-				self.logger[moduleinstance].info("In process feed: " + feedidx);
-				self.logger[moduleinstance].info("building queue " + self.queue.queue.length);
-			}
+				//this should now be an array that we can process in the simplest case
 
-			self.queue.addtoqueue(function () { self.processfeed(feed, moduleinstance, providerid, ++feedidx, jsonarray); });
+				//check it actually contains something, assuming if empty it is in error
 
-		});
-		//even though this is no longer asynchronous we keep the queue just for ease of development
+				if (jsonarray.length == 0) {
+					console.error("json array is empty");
+					return;
+				}
 
-		this.queue.startqueue(providerstorage[moduleinstance].config.waitforqueuetime);
-		
+				self.queue.addtoqueue(function () { self.processfeed(feed, JSONconfig.moduleinstance, JSONconfig.providerid, ++JSONconfig.feedidx, jsonarray); });
+
+				self.queue.startqueue(providerstorage[JSONconfig.moduleinstance].config.waitforqueuetime); //the start function ignores a start once started
+
+			});
+		}
+
+		JSONutils.getJSONnew(JSONconfig);
+
 	},
 
 	showstatus: function (moduleinstance) {
