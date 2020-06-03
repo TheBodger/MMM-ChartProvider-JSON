@@ -118,6 +118,8 @@ module.exports = NodeHelper.create({
 
 			}
 
+
+
 			//store the actual timestamp to start filtering, this will change as new feeds are pulled to the latest date of those feeds
 			//if no date is available on a feed, then the current latest date of a feed published is allocated to it
 
@@ -307,7 +309,7 @@ module.exports = NodeHelper.create({
 			this.logger[moduleinstance].info("In fetch feed: " + feedidx);
 		}
 
-		//use these in the feedparser area
+		//use these in the output area
 		var sourcetitle = feed.sourcetitle;
 
 		var self = this;
@@ -364,7 +366,14 @@ module.exports = NodeHelper.create({
 							if (feed.feedconfig.timestampformat != null) {
 								if (moment(temptimestamp, feed.feedconfig.timestampformat).isValid()) {
 									tempitem.timestamp = moment(temptimestamp, feed.feedconfig.timestampformat).toDate();
-									processthisitem = true;
+									if (feed.feedconfig.oldestage != null) {
+										if (tempitem.timestamp >= feed.lastFeedDate) {
+											processthisitem = true;
+										}
+									}
+									else {
+										processthisitem = true;
+                                    }
 								}
 								else {
 									console.error("Invalid date");
@@ -402,7 +411,7 @@ module.exports = NodeHelper.create({
 				this.outputarray[feedidx].push(tempitem);
 			}
 			else {
-				console.info("Ignoring: ", JSON.stringify(tempitem), JSON.stringify(jsonarray[idx]));
+				//console.info("Ignoring: ", JSON.stringify(tempitem));
 			}
 
 			delete tempitem;
@@ -410,16 +419,13 @@ module.exports = NodeHelper.create({
 		}  //end of process loop - input array
 
 		if (feed.feedconfig.filename == null) {
-			console.info(this.outputarray[feedidx].length);
+			console.info(this.name,"output data length",this.outputarray[feedidx].length);
 		}
 		else {
 
 			// write out to a file
 
 			JSONutils.putJSON("./" + feed.feedconfig.filename, this.outputarray[feedidx]);
-
-			console.info(this.outputarray[feedidx].length);
-
 		}
 
 		var rsssource = new RSS.RSSsource();
