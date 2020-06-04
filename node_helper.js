@@ -408,6 +408,8 @@ module.exports = NodeHelper.create({
 			}
 
 			if (processthisitem) {
+				//stringify the timestamp to preserve its format later
+				tempitem.timestamp =tempitem.timestamp.getTime();
 				this.outputarray[feedidx].push(tempitem);
 			}
 			else {
